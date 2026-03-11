@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import type { Task } from "@/types";
+import type { Task, Priority, TaskStatus } from "@/types";
 
 interface TaskFormProps {
   tags: { id: string; name: string; color: string }[];
@@ -149,7 +149,7 @@ export default function TaskForm({ tags, mode, task }: TaskFormProps) {
             <Select
               value={formData.priority}
               onValueChange={(v) =>
-                setFormData((prev) => ({ ...prev, priority: v }))
+                setFormData((prev) => ({ ...prev, priority: v as Priority }))
               }
             >
               <SelectTrigger className="h-9 text-xs">
@@ -172,7 +172,7 @@ export default function TaskForm({ tags, mode, task }: TaskFormProps) {
             <Select
               value={formData.status}
               onValueChange={(v) =>
-                setFormData((prev) => ({ ...prev, status: v }))
+                setFormData((prev) => ({ ...prev, status: v as TaskStatus }))
               }
             >
               <SelectTrigger className="h-9 text-xs">
