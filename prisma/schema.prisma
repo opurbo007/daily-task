@@ -2,31 +2,33 @@ generator client {
   provider = "prisma-client-js"
 }
 
+
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  image         String?
-  password      String?
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  image          String?
+  password       String?
   telegramChatId String?
-  streakCount   Int       @default(0)
+  streakCount    Int       @default(0)
   lastActiveDate DateTime?
-  theme         String    @default("dark")
-  notifications Json      @default("{\"browser\": true, \"telegram\": true, \"dailyReminder\": true, \"overdueAlert\": true}")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  theme          String    @default("dark")
+  notificationSettings Json @default("{\"browser\": true, \"telegram\": true, \"dailyReminder\": true, \"overdueAlert\": true}")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   accounts      Account[]
   sessions      Session[]
   tasks         Task[]
   weeklyReports WeeklyReport[]
-  notification Notification[]
+  notifications Notification[]
   tags          Tag[]
 
   @@map("users")
@@ -93,8 +95,8 @@ model Task {
   dueDate       DateTime?
   priority      Priority   @default(MEDIUM)
   status        TaskStatus @default(PENDING)
-  estimatedTime Int?       // in minutes
-  actualTime    Int?       // in minutes
+  estimatedTime Int?
+  actualTime    Int?
   sortOrder     Int        @default(0)
   completedAt   DateTime?
   reminderSent  Boolean    @default(false)
@@ -138,17 +140,17 @@ model TaskTag {
 }
 
 model WeeklyReport {
-  id              String   @id @default(cuid())
-  weekStart       DateTime
-  weekEnd         DateTime
-  totalCreated    Int      @default(0)
-  totalCompleted  Int      @default(0)
-  completionRate  Float    @default(0)
+  id               String   @id @default(cuid())
+  weekStart        DateTime
+  weekEnd          DateTime
+  totalCreated     Int      @default(0)
+  totalCompleted   Int      @default(0)
+  completionRate   Float    @default(0)
   mostProductiveDay String?
-  overdueCount    Int      @default(0)
-  dailyBreakdown  Json     @default("[]")
-  sentToTelegram  Boolean  @default(false)
-  createdAt       DateTime @default(now())
+  overdueCount     Int      @default(0)
+  dailyBreakdown   Json     @default("[]")
+  sentToTelegram   Boolean  @default(false)
+  createdAt        DateTime @default(now())
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -160,7 +162,7 @@ model Notification {
   id        String   @id @default(cuid())
   title     String
   message   String
-  type      String   // REMINDER | OVERDUE | REPORT | SYSTEM
+  type      String
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 

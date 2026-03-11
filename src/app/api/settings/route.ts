@@ -8,15 +8,15 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { notifications, theme } = body;
+  const { notificationSettings, theme } = body;
 
   const user = await prisma.user.update({
     where: { id: session.user.id },
     data: {
-      ...(notifications && { notifications }),
+      ...(notificationSettings && { notificationSettings }),
       ...(theme && { theme }),
     },
-    select: { id: true, notifications: true, theme: true },
+    select: { id: true, notificationSettings: true, theme: true },
   });
 
   return NextResponse.json(user);

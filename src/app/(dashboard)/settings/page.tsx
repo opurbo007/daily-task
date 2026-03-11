@@ -17,7 +17,7 @@ export default async function SettingsPage() {
       email: true,
       telegramChatId: true,
       theme: true,
-      notifications: true,
+      notificationSettings: true,
     },
   });
 

@@ -1,36 +1,16 @@
-"use client";
-
-import { useEffect } from "react";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { useSession } from "next-auth/react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { initCronJobs } from "@/services/cron";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { data: session, status } = useSession();
+  const session = await auth();
 
-  useKeyboardShortcuts();
-
-  if (status === "loading") {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground animate-pulse">
-            Loading TaskMaster...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!session) {
+  if (!session?.user) {
     redirect("/login");
   }
 

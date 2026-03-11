@@ -1,16 +1,20 @@
 import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/register", "/api/auth"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/register",
+  "/api/auth",
+  "/api/register",   // ← registration endpoint must be public
+  "/api/debug",      // ← dev debug endpoint
+];
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Allow public paths
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
   if (isPublic) return NextResponse.next();
 
-  // Redirect unauthenticated users
   if (!req.auth) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);

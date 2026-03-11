@@ -47,7 +47,7 @@ export async function runDailyReminderJob() {
   const users = await prisma.user.findMany({
     where: {
       telegramChatId: { not: null },
-      notifications: { path: ["dailyReminder"], equals: true },
+      notificationSettings: { path: ["dailyReminder"], equals: true },
     },
   });
 
@@ -88,7 +88,7 @@ export async function runOverdueCheckJob() {
   const users = await prisma.user.findMany({
     where: {
       telegramChatId: { not: null },
-      notifications: { path: ["overdueAlert"], equals: true },
+      notificationSettings: { path: ["overdueAlert"], equals: true },
     },
   });
 

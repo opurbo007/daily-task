@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
@@ -24,6 +25,7 @@ export default function Header() {
   const { notifications, unreadCount, markAllRead } = useNotifications();
   const [searchOpen, setSearchOpen] = useState(false);
   const router = useRouter();
+  useKeyboardShortcuts();
 
   return (
     <header className="flex h-14 items-center gap-4 border-b border-border bg-card/30 px-6 backdrop-blur-sm">

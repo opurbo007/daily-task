@@ -17,55 +17,32 @@ export default function RegisterPage() {
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState<Record<string, string[]>>({});
 
-async function handleSubmit(e: React.FormEvent) {
-  e.preventDefault();
-  setLoading(true);
-  setErrors({});
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setErrors({});
 
-  try {
-    const res = await fetch("/api/auth/register", {
+    const res = await fetch("/api/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),
     });
 
-    const data = await res.json();
-
-   if (!res.ok) {
-  if (data.error) {
-    setErrors(data.error);
-    if (data.error.general) {
-      toast({ title: "Error", description: data.error.general[0], variant: "destructive" });
+    if (!res.ok) {
+      const data = await res.json();
+      if (data.error) setErrors(data.error);
+      setLoading(false);
+      return;
     }
-  }
-  return;
-}
-
-    toast({ title: "Account created", description: "Welcome aboard!", variant: "default" });
 
     // Auto sign in
-   const signInResult = await signIn("credentials", {
-  email: formData.email,
-  password: formData.password,
-  redirect: false,
-});
-
-if (signInResult?.ok) {
-  router.push("/dashboard");
-} else {
-  toast({ title: "Sign-in failed", variant: "destructive" });
-}
-  } catch (err: unknown) {
-    console.error(err);
-    toast({
-      title: "Error",
-      description: err instanceof Error ? err.message : "Something went wrong",
-      variant: "destructive",
+    await signIn("credentials", {
+      email: formData.email,
+      password: formData.password,
+      callbackUrl: "/dashboard",
     });
-  } finally {
-    setLoading(false);
   }
-}
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="fixed inset-0 -z-10">

@@ -290,4 +290,3 @@ npx shadcn@latest add progress tooltip separator scroll-area
 ---
 
 Made with ❤️ for productivity nerds.
-# daily-task
