@@ -9,12 +9,13 @@ export const metadata: Metadata = { title: "Tasks" };
 export default async function TasksPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | undefined };
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const userId = session.user.id;
+  const filters = await searchParams;
 
   const [tasks, tags] = await Promise.all([
     prisma.task.findMany({
@@ -25,5 +26,5 @@ export default async function TasksPage({
     prisma.tag.findMany({ where: { userId }, orderBy: { name: "asc" } }),
   ]);
 
-  return <TasksClient tasks={tasks as any} tags={tags} initialFilters={searchParams} />;
+  return <TasksClient tasks={tasks as any} tags={tags} initialFilters={filters} />;
 }
