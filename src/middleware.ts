@@ -1,28 +1,36 @@
-import { auth } from "@/lib/auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 
 const PUBLIC_PATHS = [
   "/login",
   "/register",
   "/api/auth",
-  "/api/register",   // ← registration endpoint must be public
-  "/api/debug",      // ← dev debug endpoint
+  "/api/register",
+  "/api/debug",
 ];
 
-export default auth((req) => {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
-  if (isPublic) return NextResponse.next();
+  // Allow public paths through
+  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
 
-  if (!req.auth) {
+  // getToken only reads the JWT cookie — no bcrypt, no Prisma, Edge-safe
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+  });
+
+  if (!token) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
   return NextResponse.next();
-});
+}
 
 export const config = {
   matcher: [
