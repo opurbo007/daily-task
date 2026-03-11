@@ -6,21 +6,22 @@ import TaskForm from "@/components/tasks/TaskForm";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
-import { PRIORITY_CONFIG, STATUS_CONFIG, cn } from "@/lib/utils";
+import { PRIORITY_CONFIG, cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Edit Task" };
 
 export default async function TaskDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const [task, tags] = await Promise.all([
     prisma.task.findFirst({
-      where: { id: params.id, userId: session.user.id },
+      where: { id, userId: session.user.id },
       include: { tags: { include: { tag: true } } },
     }),
     prisma.tag.findMany({

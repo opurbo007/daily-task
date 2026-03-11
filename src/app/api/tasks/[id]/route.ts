@@ -16,43 +16,35 @@ const updateTaskSchema = z.object({
   completedAt: z.string().optional().nullable(),
 });
 
+type RouteContext = { params: Promise<{ id: string }> };
+
 async function getTaskAndVerify(taskId: string, userId: string) {
-  const task = await prisma.task.findFirst({
-    where: { id: taskId, userId },
-  });
-  return task;
+  return prisma.task.findFirst({ where: { id: taskId, userId } });
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function GET(req: NextRequest, { params }: RouteContext) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const { id } = await params;
   const task = await prisma.task.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
     include: { tags: { include: { tag: true } } },
   });
 
-  if (!task)
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
-
+  if (!task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
   return NextResponse.json(task);
 }
 
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PUT(req: NextRequest, { params }: RouteContext) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const existing = await getTaskAndVerify(params.id, session.user.id);
-  if (!existing)
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  const { id } = await params;
+  const existing = await getTaskAndVerify(id, session.user.id);
+  if (!existing) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
   const body = await req.json();
   const parsed = updateTaskSchema.safeParse(body);
@@ -62,23 +54,16 @@ export async function PUT(
   const { tagIds, dueDate, completedAt, ...data } = parsed.data;
 
   const task = await prisma.task.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...data,
       dueDate: dueDate !== undefined ? (dueDate ? new Date(dueDate) : null) : undefined,
       completedAt:
         completedAt !== undefined
-          ? completedAt
-            ? new Date(completedAt)
-            : null
-          : data.status === "COMPLETED"
-          ? new Date()
-          : undefined,
+          ? completedAt ? new Date(completedAt) : null
+          : data.status === "COMPLETED" ? new Date() : undefined,
       tags: tagIds !== undefined
-        ? {
-            deleteMany: {},
-            create: tagIds.map((tagId) => ({ tagId })),
-          }
+        ? { deleteMany: {}, create: tagIds.map((tagId) => ({ tagId })) }
         : undefined,
     },
     include: { tags: { include: { tag: true } } },
@@ -87,23 +72,20 @@ export async function PUT(
   return NextResponse.json(task);
 }
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function PATCH(req: NextRequest, { params }: RouteContext) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const existing = await getTaskAndVerify(params.id, session.user.id);
-  if (!existing)
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  const { id } = await params;
+  const existing = await getTaskAndVerify(id, session.user.id);
+  if (!existing) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
   const body = await req.json();
   const { completedAt, dueDate, ...rest } = body;
 
   const task = await prisma.task.update({
-    where: { id: params.id },
+    where: { id },
     data: {
       ...rest,
       ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
@@ -117,18 +99,15 @@ export async function PATCH(
   return NextResponse.json(task);
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
   const session = await auth();
   if (!session?.user?.id)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const existing = await getTaskAndVerify(params.id, session.user.id);
-  if (!existing)
-    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  const { id } = await params;
+  const existing = await getTaskAndVerify(id, session.user.id);
+  if (!existing) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
-  await prisma.task.delete({ where: { id: params.id } });
+  await prisma.task.delete({ where: { id } });
   return NextResponse.json({ success: true });
 }
