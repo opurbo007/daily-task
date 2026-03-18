@@ -63,7 +63,7 @@ export default function LoginPage() {
 
         {/* Card */}
         <div className="glass rounded-2xl border border-border p-6 space-y-4">
-          {/* Google Sign In */}
+          {/* Google Sign In
           <Button
             type="button"
             variant="outline"
@@ -94,13 +94,13 @@ export default function LoginPage() {
               </svg>
             )}
             Continue with Google
-          </Button>
-
+          </Button> */}
+{/* 
           <div className="flex items-center gap-3">
             <div className="flex-1 border-t border-border" />
             <span className="text-xs text-muted-foreground">or</span>
             <div className="flex-1 border-t border-border" />
-          </div>
+          </div> */}
 
           {/* Email form */}
           <form onSubmit={handleSubmit} className="space-y-3">

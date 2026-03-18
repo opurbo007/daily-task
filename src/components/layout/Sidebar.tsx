@@ -14,6 +14,7 @@ import {
   Flame,
   ChevronLeft,
   ChevronRight,
+  Layers,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,7 @@ const navItems = [
   { href: "/focus", label: "Focus Mode", icon: Zap, shortcut: "F" },
   { href: "/analytics", label: "Analytics", icon: BarChart3, shortcut: "A" },
   { href: "/reports", label: "Reports", icon: FileText, shortcut: "R" },
+  { href: "/space", label: "Space", icon: Layers, shortcut: "P" },
   { href: "/settings", label: "Settings", icon: Settings, shortcut: "S" },
 ];
 
