@@ -36,6 +36,9 @@ export async function middleware(req: NextRequest) {
     secret,
   });
 
+
+console.log("TOKEN IN MIDDLEWARE:", token);
+console.log("COOKIE:", req.cookies.getAll());
   // Debug (enable only if needed)
   // console.log("[middleware token]", token);
 
