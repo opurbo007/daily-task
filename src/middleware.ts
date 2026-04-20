@@ -18,10 +18,10 @@ export async function middleware(req: NextRequest) {
   }
 
   // getToken only reads the JWT cookie — no bcrypt, no Prisma, Edge-safe
-  const token = await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
-  });
+const token = await getToken({
+  req,
+  secret: process.env.NEXTAUTH_SECRET,
+});
 
   if (!token) {
     const loginUrl = new URL("/login", req.url);
