@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-
+// This is proxy
 export const config = {
   matcher: ["/((?!_next|favicon.ico|api/auth).*)"],
 };
