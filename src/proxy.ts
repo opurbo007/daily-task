@@ -23,6 +23,6 @@ export async function proxy(req: NextRequest) {
     url.searchParams.set("callbackUrl", req.nextUrl.href);
     return NextResponse.redirect(url);
   }
-
+//   if (pathname.startsWith("/api/auth")) {
   return NextResponse.next();
 }
