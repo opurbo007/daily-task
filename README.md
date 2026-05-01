@@ -89,7 +89,7 @@ taskmaster/
 ├── prisma/
 │   ├── schema.prisma          # Database schema
 │   └── seed.ts                # Demo data seeder
-├── src/
+├── 
 │   ├── app/
 │   │   ├── (auth)/
 │   │   │   ├── login/         # Login page
