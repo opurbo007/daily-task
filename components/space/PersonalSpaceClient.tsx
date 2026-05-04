@@ -127,6 +127,8 @@ export default function PersonalSpaceClient({ initialCards }: Props) {
   }
 
   async function handleDelete(id: string) {
+    if (!window.confirm("Delete this space card? This cannot be undone.")) return;
+
     setDeletingId(id);
     try {
       const res = await fetch(`/api/space/${id}`, { method: "DELETE" });

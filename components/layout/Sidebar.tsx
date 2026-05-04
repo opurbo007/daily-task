@@ -10,6 +10,8 @@ import {
   Settings,
   FileText,
   Zap,
+  Dumbbell,
+  Flag,
   LogOut,
   Flame,
   ChevronLeft,
@@ -25,6 +27,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, shortcut: "D" },
   { href: "/tasks", label: "Tasks", icon: CheckSquare, shortcut: "T" },
+  { href: "/fitness", label: "Fitness", icon: Dumbbell, shortcut: "X" },
+  { href: "/goals", label: "Life Goals", icon: Flag, shortcut: "G" },
   { href: "/focus", label: "Focus Mode", icon: Zap, shortcut: "F" },
   { href: "/analytics", label: "Analytics", icon: BarChart3, shortcut: "A" },
   { href: "/reports", label: "Reports", icon: FileText, shortcut: "R" },

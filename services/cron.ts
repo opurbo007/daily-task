@@ -1,4 +1,3 @@
-import cron from "node-cron";
 import { prisma } from "../lib/prisma";
 import {
   sendDailyReminder,
@@ -13,34 +12,7 @@ let initialized = false;
 export function initCronJobs() {
   if (initialized) return;
   initialized = true;
-
-  console.log("🕐 Initializing cron jobs...");
-
-  // Daily morning reminder — 8:00 AM every day
-  cron.schedule("0 8 * * *", async () => {
-    console.log("📨 Running daily reminder job...");
-    await runDailyReminderJob();
-  });
-
-  // Overdue check — every 2 hours
-  cron.schedule("0 */2 * * *", async () => {
-    console.log("⚠️ Running overdue check job...");
-    await runOverdueCheckJob();
-  });
-
-  // Task due-soon reminder — every hour
-  cron.schedule("0 * * * *", async () => {
-    console.log("⏰ Running due-soon reminder job...");
-    await runDueSoonReminderJob();
-  });
-
-  // Weekly report — Sunday at 9:00 PM
-  cron.schedule("0 21 * * 0", async () => {
-    console.log("📊 Running weekly report job...");
-    await runWeeklyReportJob();
-  });
-
-  console.log("✅ Cron jobs initialized");
+  console.log("In-process cron is disabled. Use /api/cron from Vercel Cron or a manual trigger.");
 }
 
 export async function runDailyReminderJob() {

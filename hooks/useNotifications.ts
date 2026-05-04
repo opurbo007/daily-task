@@ -29,10 +29,7 @@ export function useNotifications() {
   }
 
   useEffect(() => {
-    fetchNotifications();
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30_000);
-    return () => clearInterval(interval);
+    setLoading(false);
   }, []);
 
   return { notifications, unreadCount, loading, markAllRead, refetch: fetchNotifications };

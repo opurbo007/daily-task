@@ -1,9 +1,25 @@
-import type { Task, WeeklyReport } from "../types";
 import { format } from "date-fns";
+import type { Task, WeeklyReport } from "../types";
 
 const TELEGRAM_API = `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}`;
 
+function appUrl(path = "") {
+  return `${process.env.NEXT_PUBLIC_APP_URL || ""}${path}`;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 async function sendMessage(chatId: string, text: string): Promise<boolean> {
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    console.error("Missing TELEGRAM_BOT_TOKEN");
+    return false;
+  }
+
   try {
     const response = await fetch(`${TELEGRAM_API}/sendMessage`, {
       method: "POST",
@@ -17,8 +33,7 @@ async function sendMessage(chatId: string, text: string): Promise<boolean> {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      console.error("Telegram API error:", error);
+      console.error("Telegram API error:", await response.text());
       return false;
     }
 
@@ -29,157 +44,95 @@ async function sendMessage(chatId: string, text: string): Promise<boolean> {
   }
 }
 
+async function setBotCommands(): Promise<boolean> {
+  if (!process.env.TELEGRAM_BOT_TOKEN) return false;
+
+  try {
+    const response = await fetch(`${TELEGRAM_API}/setMyCommands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        commands: [
+          { command: "tasks", description: "Show all open tasks" },
+          { command: "today", description: "Show today's tasks" },
+          { command: "priority", description: "Show priority tasks" },
+          { command: "fitness", description: "Show fitness exercises" },
+          { command: "help", description: "Show command help" },
+        ],
+      }),
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error("Failed to set Telegram commands:", error);
+    return false;
+  }
+}
+
 export function formatPriorityEmoji(priority: string): string {
   const map: Record<string, string> = {
-    CRITICAL: "🚨",
-    HIGH: "🔥",
-    MEDIUM: "⚡",
-    LOW: "📌",
+    CRITICAL: "[!]",
+    HIGH: "[H]",
+    MEDIUM: "[M]",
+    LOW: "[L]",
   };
-  return map[priority] || "📌";
+  return map[priority] || "[ ]";
 }
 
-export async function sendDailyReminder(
-  chatId: string,
-  tasks: Task[]
-): Promise<boolean> {
-  const today = format(new Date(), "EEEE, MMMM d");
-  const pending = tasks.filter(
-    (t) => t.status === "PENDING" || t.status === "IN_PROGRESS"
-  );
+export function formatTaskList(title: string, tasks: Task[], emptyMessage: string) {
+  if (tasks.length === 0) return `<b>${escapeHtml(title)}</b>\n\n${escapeHtml(emptyMessage)}`;
 
-  const grouped = pending.reduce(
-    (acc, task) => {
-      acc[task.priority] = acc[task.priority] || [];
-      acc[task.priority].push(task);
-      return acc;
-    },
-    {} as Record<string, Task[]>
-  );
-
-  let message = `📋 <b>Daily Task Reminder</b>\n`;
-  message += `📅 ${today}\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-  message += `You have <b>${pending.length} tasks</b> today\n\n`;
-
-  const priorityOrder = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
-  for (const priority of priorityOrder) {
-    const items = grouped[priority];
-    if (!items?.length) continue;
-
-    message += `${formatPriorityEmoji(priority)} <b>${priority.charAt(0) + priority.slice(1).toLowerCase()} Priority</b>\n`;
-    items.forEach((task) => {
-      const time = task.estimatedTime
-        ? ` (${task.estimatedTime}min)`
-        : "";
-      message += `  • ${task.title}${time}\n`;
-    });
-    message += "\n";
-  }
-
-  message += `\n🎯 <i>Stay focused. You've got this!</i>`;
-  message += `\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard">Open TaskMaster →</a>`;
-
-  return sendMessage(chatId, message);
-}
-
-export async function sendOverdueAlert(
-  chatId: string,
-  tasks: Task[]
-): Promise<boolean> {
-  if (tasks.length === 0) return true;
-
-  let message = `⚠️ <b>Overdue Task Alert</b>\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-  message += `You have <b>${tasks.length} overdue task${tasks.length > 1 ? "s" : ""}</b>:\n\n`;
-
-  tasks.forEach((task) => {
-    const daysOverdue = task.dueDate
-      ? Math.floor(
-          (Date.now() - new Date(task.dueDate).getTime()) /
-            (1000 * 60 * 60 * 24)
-        )
-      : 0;
-    message += `${formatPriorityEmoji(task.priority)} <b>${task.title}</b>\n`;
-    message += `   ⏰ ${daysOverdue} day${daysOverdue !== 1 ? "s" : ""} overdue\n\n`;
+  const lines = tasks.slice(0, 20).map((task, index) => {
+    const due = task.dueDate ? ` | due ${format(new Date(task.dueDate), "MMM d, h:mm a")}` : "";
+    const time = task.estimatedTime ? ` | ${task.estimatedTime}m` : "";
+    return `${index + 1}. ${formatPriorityEmoji(task.priority)} <b>${escapeHtml(task.title)}</b>${due}${time}\n${appUrl(`/tasks/${task.id}`)}`;
   });
 
-  message += `<a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks?filter=overdue">View Overdue Tasks →</a>`;
+  return `<b>${escapeHtml(title)}</b>\n\n${lines.join("\n\n")}`;
+}
 
+export async function sendDailyReminder(chatId: string, tasks: Task[]): Promise<boolean> {
+  const pending = tasks.filter((task) => task.status === "PENDING" || task.status === "IN_PROGRESS");
+  let message = formatTaskList("Daily Task Reminder", pending, "No pending tasks for today.");
+  message += `\n\n<a href="${appUrl("/dashboard")}">Open TaskMaster</a>`;
   return sendMessage(chatId, message);
 }
 
-export async function sendTaskDueReminder(
-  chatId: string,
-  task: Task
-): Promise<boolean> {
+export async function sendOverdueAlert(chatId: string, tasks: Task[]): Promise<boolean> {
+  let message = formatTaskList("Overdue Task Alert", tasks, "No overdue tasks.");
+  message += `\n\n<a href="${appUrl("/tasks?filter=overdue")}">View overdue tasks</a>`;
+  return sendMessage(chatId, message);
+}
+
+export async function sendTaskDueReminder(chatId: string, task: Task): Promise<boolean> {
   const dueIn = task.dueDate
-    ? Math.ceil(
-        (new Date(task.dueDate).getTime() - Date.now()) / (1000 * 60 * 60)
-      )
+    ? Math.ceil((new Date(task.dueDate).getTime() - Date.now()) / (1000 * 60 * 60))
     : null;
 
-  let message = `⏰ <b>Task Due Reminder</b>\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-  message += `${formatPriorityEmoji(task.priority)} <b>${task.title}</b>\n`;
-  if (task.description) message += `📝 ${task.description}\n`;
-  if (dueIn !== null) {
-    message += `⌛ Due in <b>${dueIn} hour${dueIn !== 1 ? "s" : ""}</b>\n`;
-  }
-  message += `\n<a href="${process.env.NEXT_PUBLIC_APP_URL}/tasks/${task.id}">View Task →</a>`;
+  let message = `<b>Task Due Reminder</b>\n\n`;
+  message += `${formatPriorityEmoji(task.priority)} <b>${escapeHtml(task.title)}</b>\n`;
+  if (task.description) message += `${escapeHtml(task.description)}\n`;
+  if (dueIn !== null) message += `Due in ${dueIn} hour${dueIn === 1 ? "" : "s"}\n`;
+  message += `\n<a href="${appUrl(`/tasks/${task.id}`)}">View task</a>`;
 
   return sendMessage(chatId, message);
 }
 
-export async function sendWeeklyReport(
-  chatId: string,
-  report: WeeklyReport
-): Promise<boolean> {
+export async function sendWeeklyReport(chatId: string, report: WeeklyReport): Promise<boolean> {
   const weekStart = format(new Date(report.weekStart), "MMM d");
   const weekEnd = format(new Date(report.weekEnd), "MMM d, yyyy");
   const rate = Math.round(report.completionRate);
-  const rateBar = generateProgressBar(rate);
 
-  let message = `📊 <b>Weekly Productivity Report</b>\n`;
-  message += `📅 ${weekStart} – ${weekEnd}\n`;
-  message += `━━━━━━━━━━━━━━━━━━━━\n\n`;
-
-  message += `📋 Tasks Created: <b>${report.totalCreated}</b>\n`;
-  message += `✅ Tasks Completed: <b>${report.totalCompleted}</b>\n`;
-  message += `⚠️ Overdue: <b>${report.overdueCount}</b>\n\n`;
-
-  message += `📈 <b>Completion Rate: ${rate}%</b>\n`;
-  message += `${rateBar}\n\n`;
-
-  if (report.mostProductiveDay) {
-    message += `🏆 Most Productive: <b>${report.mostProductiveDay}</b>\n\n`;
-  }
-
-  if (report.dailyBreakdown.length > 0) {
-    message += `📆 <b>Daily Breakdown:</b>\n`;
-    report.dailyBreakdown.forEach((day) => {
-      message += `  ${format(new Date(day.date), "EEE")}: ${day.completed}/${day.created} tasks\n`;
-    });
-    message += "\n";
-  }
-
-  // Motivational message based on rate
-  if (rate >= 90) message += `🎉 <i>Outstanding week! You're on fire!</i>`;
-  else if (rate >= 70)
-    message += `💪 <i>Great week! Keep pushing forward!</i>`;
-  else if (rate >= 50)
-    message += `📈 <i>Solid progress. Room to grow next week!</i>`;
-  else message += `🎯 <i>Every step counts. Let's do better next week!</i>`;
-
-  message += `\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL}/analytics">View Full Analytics →</a>`;
+  let message = `<b>Weekly Productivity Report</b>\n`;
+  message += `${weekStart} - ${weekEnd}\n\n`;
+  message += `Tasks created: <b>${report.totalCreated}</b>\n`;
+  message += `Tasks completed: <b>${report.totalCompleted}</b>\n`;
+  message += `Overdue: <b>${report.overdueCount}</b>\n`;
+  message += `Completion rate: <b>${rate}%</b>\n`;
+  if (report.mostProductiveDay) message += `Most productive: <b>${escapeHtml(report.mostProductiveDay)}</b>\n`;
+  message += `\n<a href="${appUrl("/analytics")}">View analytics</a>`;
 
   return sendMessage(chatId, message);
 }
 
-function generateProgressBar(percentage: number): string {
-  const filled = Math.round(percentage / 10);
-  const empty = 10 - filled;
-  return "█".repeat(filled) + "░".repeat(empty) + ` ${percentage}%`;
-}
-
-export { sendMessage };
+export { sendMessage, setBotCommands, escapeHtml };

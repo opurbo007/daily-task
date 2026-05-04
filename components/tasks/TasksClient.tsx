@@ -140,6 +140,8 @@ export default function TasksClient({
   }
 
   async function handleDelete(taskId: string) {
+    if (!window.confirm("Delete this task? This cannot be undone.")) return;
+
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     try {
       await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });

@@ -10,6 +10,7 @@ import {
   Tag,
   MoreHorizontal,
   Pencil,
+  Eye,
   Trash2,
   CheckCircle,
   Circle,
@@ -107,6 +108,7 @@ export default function TaskCard({ task, onStatusChange, onDelete }: TaskCardPro
             >
               {task.title}
             </Link>
+            <ButtonLink href={`/tasks/${task.id}`} />
 
             {/* Actions */}
             <DropdownMenu>
@@ -118,6 +120,12 @@ export default function TaskCard({ task, onStatusChange, onDelete }: TaskCardPro
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem asChild>
                   <Link href={`/tasks/${task.id}`} className="flex items-center gap-2">
+                    <Eye className="h-3.5 w-3.5" />
+                    View task
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/tasks/${task.id}/edit`} className="flex items-center gap-2">
                     <Pencil className="h-3.5 w-3.5" />
                     Edit task
                   </Link>
@@ -209,5 +217,16 @@ export default function TaskCard({ task, onStatusChange, onDelete }: TaskCardPro
         </div>
       </div>
     </div>
+  );
+}
+
+function ButtonLink({ href }: { href: string }) {
+  return (
+    <Link
+      href={href}
+      className="hidden rounded-md px-2 py-1 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10 sm:inline-flex"
+    >
+      View
+    </Link>
   );
 }

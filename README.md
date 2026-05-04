@@ -48,12 +48,18 @@ Edit `.env` with your values:
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=<generate with: openssl rand -base64 32>
 DATABASE_URL=postgresql://user:pass@localhost:5432/taskmaster
-GOOGLE_CLIENT_ID=<optional>
-GOOGLE_CLIENT_SECRET=<optional>
 TELEGRAM_BOT_TOKEN=<your bot token from @BotFather>
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 CRON_SECRET=<any random string>
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=<smtp login username>
+SMTP_PASS=<smtp password>
+SMTP_FROM="TaskMaster <no-reply@yourdomain.com>"
+SMTP_REPLY_TO=support@yourdomain.com
 ```
+
+For password reset email deliverability, use a verified sender/domain from your mail provider and configure SPF, DKIM, and DMARC DNS records. Do not set `SMTP_FROM` to your private SMTP login address unless you want users to see it.
 
 ### 3. Setup Database
 
@@ -175,118 +181,6 @@ taskmaster/
 
 ---
 
-## 🗄️ Database Commands
 
-```bash
-npm run db:generate     # Generate Prisma client after schema changes
-npm run db:migrate      # Create + run migrations (development)
-npm run db:migrate:prod # Apply migrations (production)
-npm run db:push         # Push schema without migrations (quick dev)
-npm run db:studio       # Open Prisma Studio (GUI)
-npm run db:seed         # Seed demo data
-```
-
----
-
-## 🌐 Deploying to Production
-
-### Option A: Vercel + Neon PostgreSQL (Recommended)
-
-1. Push to GitHub
-2. Import project in [Vercel](https://vercel.com)
-3. Create free PostgreSQL at [Neon](https://neon.tech) or [Supabase](https://supabase.com)
-4. Set all environment variables in Vercel
-5. Deploy!
-
-```bash
-# After deployment, run migrations
-npx prisma migrate deploy
-```
-
-### Option B: Railway (Full stack)
-
-1. Create project on [Railway](https://railway.app)
-2. Add PostgreSQL plugin
-3. Deploy from GitHub
-4. Set environment variables
-5. Add build command: `npm run db:migrate:prod && npm run build`
-
-### Option C: VPS (Ubuntu)
-
-```bash
-# Install dependencies
-apt install nodejs npm postgresql nginx
-
-# Clone and setup
-git clone <repo> /var/www/taskmaster
-cd /var/www/taskmaster
-npm install
-npm run build
-
-# Setup PostgreSQL
-createdb taskmaster
-DATABASE_URL=postgresql://... npm run db:migrate:prod
-
-# Run with PM2
-npm install -g pm2
-pm2 start npm --name taskmaster -- start
-pm2 startup
-pm2 save
-```
-
-### Cron Jobs for VPS
-
-Since Vercel has serverless functions (no persistent cron), on a VPS use the included cron service:
-
-```bash
-# The app auto-starts crons via node-cron when running
-# Or trigger via HTTP endpoint with your CRON_SECRET:
-curl -X POST https://yourdomain.com/api/cron \
-  -H "x-cron-secret: YOUR_CRON_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{"job": "daily-reminder"}'
-```
-
-For Vercel, use [Vercel Cron Jobs](https://vercel.com/docs/cron-jobs) or [cron-job.org](https://cron-job.org).
-
----
-
-## 🔐 Security Notes
-
-- Change `NEXTAUTH_SECRET` to a strong random value in production
-- Set `CRON_SECRET` to secure the cron API endpoint
-- Enable HTTPS in production (Vercel handles this automatically)
-- Telegram Bot token should never be exposed to clients
-
----
-
-## 📦 Key Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| `next@15` | Framework with App Router |
-| `next-auth@v5` | Authentication (email + Google) |
-| `prisma` | Database ORM |
-| `@dnd-kit/*` | Drag and drop |
-| `recharts` | Analytics charts |
-| `node-cron` | Background scheduling |
-| `shadcn/ui` | Component library |
-| `next-themes` | Dark/light mode |
-| `zod` | Schema validation |
-| `zustand` | State management |
-| `date-fns` | Date utilities |
-
----
-
-## 🧪 Adding Shadcn UI Components
-
-```bash
-npx shadcn@latest init
-npx shadcn@latest add button input label select switch toast
-npx shadcn@latest add dialog dropdown-menu avatar badge
-npx shadcn@latest add progress tooltip separator scroll-area
-```
-
----
 
 Made with ❤️ for productivity nerds.

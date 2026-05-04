@@ -1,19 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   runDailyReminderJob,
+  runDueSoonReminderJob,
   runOverdueCheckJob,
   runWeeklyReportJob,
 } from "../../../services/cron";
 
-// Secured cron endpoint — call with CRON_SECRET header
-export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-cron-secret");
+export async function GET(req: NextRequest) {
+  return runCronJob(req);
+}
 
-  if (secret !== process.env.CRON_SECRET) {
+export async function POST(req: NextRequest) {
+  return runCronJob(req);
+}
+
+async function runCronJob(req: NextRequest) {
+  const secret = req.headers.get("x-cron-secret");
+  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+
+  if (secret !== process.env.CRON_SECRET && bearer !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { job } = await req.json();
+  const searchJob = req.nextUrl.searchParams.get("job");
+  const body = req.method === "POST" ? await req.json().catch(() => ({})) : {};
+  const job = searchJob || body.job;
 
   try {
     switch (job) {
@@ -22,6 +33,9 @@ export async function POST(req: NextRequest) {
         break;
       case "overdue-check":
         await runOverdueCheckJob();
+        break;
+      case "due-soon":
+        await runDueSoonReminderJob();
         break;
       case "weekly-report":
         await runWeeklyReportJob();

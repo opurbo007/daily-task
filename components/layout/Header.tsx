@@ -22,7 +22,7 @@ import { format } from "date-fns";
 
 export default function Header() {
   const { theme, setTheme } = useTheme();
-  const { notifications, unreadCount, markAllRead } = useNotifications();
+  const { notifications, unreadCount, markAllRead, refetch } = useNotifications();
   const [searchOpen, setSearchOpen] = useState(false);
   const router = useRouter();
   useKeyboardShortcuts();
@@ -61,7 +61,7 @@ export default function Header() {
         </Button>
 
         {/* Notifications */}
-        <DropdownMenu>
+        <DropdownMenu onOpenChange={(open) => open && refetch()}>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
