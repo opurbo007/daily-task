@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Flame, Loader2, Lock } from "lucide-react";
@@ -39,7 +39,7 @@ export default function ResetPasswordPage() {
     router.push("/login");
   }
 
-  return (
+  return (    <Suspense fallback={<div className="text-center p-4">Loading...</div>}>
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-sm animate-fade-in">
         <div className="mb-8 text-center">
@@ -82,6 +82,6 @@ export default function ResetPasswordPage() {
           )}
         </div>
       </div>
-    </div>
+    </div></Suspense>
   );
 }
