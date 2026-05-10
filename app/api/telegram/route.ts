@@ -11,10 +11,15 @@ type TelegramMessage = {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
+  console.log("Telegram webhook received:", JSON.stringify(body).slice(0, 200));
 
   if (body?.message?.chat?.id) {
     await handleCommand(body.message);
     return NextResponse.json({ ok: true });
+  }
+
+  if (body?.callback_query) {
+    console.log("Callback query:", body.callback_query);
   }
 
   const session = await auth();
