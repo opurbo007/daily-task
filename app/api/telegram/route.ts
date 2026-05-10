@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { endOfDay, startOfDay } from "date-fns";
 import { auth } from "../../../lib/auth";
 import { prisma } from "../../../lib/prisma";
-import { escapeHtml, formatTaskList, sendMessage, setBotCommands } from "../../../services/telegram";
+import { formatTaskList, sendMessage, setBotCommands } from "../../../services/telegram";
 
 type TelegramMessage = {
   chat?: { id?: number | string };
@@ -57,81 +57,61 @@ async function handleCommand(message: TelegramMessage) {
   const chatId = String(message.chat?.id || "");
   const command = (message.text || "").trim().split(/\s+/)[0].toLowerCase();
 
+  console.log("handleCommand called with chatId:", chatId, "command:", command);
+
   const user = await prisma.user.findFirst({
     where: { telegramChatId: chatId },
     select: { id: true },
   });
 
+  console.log("Found user:", user);
+
   if (!user) {
-    await sendMessage(chatId, "This Telegram chat is not connected. Save this Chat ID in TaskMaster Settings first.");
+    const sent = await sendMessage(chatId, "This Telegram chat is not connected. Save this Chat ID in TaskMaster Settings first.");
+    console.log("Send not-connected message result:", sent);
     return;
   }
 
-  const now = new Date();
-  const taskInclude = { tags: { include: { tag: true } } };
+  // Handle commands
+  try {
+    if (command === "/start" || command === "/help") {
+      const sent = await sendMessage(chatId, "<b>TaskMaster commands</b>\n\n/tasks - show all tasks\n/today - show today's tasks\n/priority - show critical/high priority tasks\n/fitness - show fitness exercises");
+      console.log("Send help result:", sent);
+      return;
+    }
 
-  if (command === "/start" || command === "/help") {
-    await sendMessage(
-      chatId,
-      "<b>TaskMaster commands</b>\n\n/tasks - show all tasks\n/today - show today's tasks\n/priority - show critical/high priority tasks\n/fitness - show fitness exercises"
-    );
-    return;
+    if (command === "/tasks") {
+      const tasks = await prisma.task.findMany({
+        where: { userId: user.id, status: { not: "COMPLETED" } },
+        include: { tags: { include: { tag: true } } },
+        orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
+        take: 20,
+      });
+      const sent = await sendMessage(chatId, formatTaskList("All Open Tasks", tasks as any, "No open tasks."));
+      console.log("Send tasks result:", sent);
+      return;
+    }
+
+    if (command === "/today") {
+      const now = new Date();
+      const tasks = await prisma.task.findMany({
+        where: {
+          userId: user.id,
+          dueDate: { gte: startOfDay(now), lte: endOfDay(now) },
+          status: { not: "COMPLETED" },
+        },
+        include: { tags: { include: { tag: true } } },
+        orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
+        take: 20,
+      });
+      const sent = await sendMessage(chatId, formatTaskList("Today's Tasks", tasks as any, "No tasks due today."));
+      console.log("Send today result:", sent);
+      return;
+    }
+
+    const sent = await sendMessage(chatId, `Unknown command: ${command}\nSend /help for options.`);
+    console.log("Send unknown command result:", sent);
+  } catch (err) {
+    console.error("Error handling command:", err);
   }
-
-  if (command === "/today") {
-    const tasks = await prisma.task.findMany({
-      where: {
-        userId: user.id,
-        dueDate: { gte: startOfDay(now), lte: endOfDay(now) },
-        status: { not: "COMPLETED" },
-      },
-      include: taskInclude,
-      orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
-      take: 20,
-    });
-    await sendMessage(chatId, formatTaskList("Today's Tasks", tasks as any, "No tasks due today."));
-    return;
-  }
-
-  if (command === "/priority") {
-    const tasks = await prisma.task.findMany({
-      where: {
-        userId: user.id,
-        priority: { in: ["CRITICAL", "HIGH"] },
-        status: { in: ["PENDING", "IN_PROGRESS"] },
-      },
-      include: taskInclude,
-      orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
-      take: 20,
-    });
-    await sendMessage(chatId, formatTaskList("Priority Tasks", tasks as any, "No critical or high priority tasks."));
-    return;
-  }
-
-  if (command === "/fitness") {
-    const tasks = await prisma.task.findMany({
-      where: {
-        userId: user.id,
-        tags: { some: { tag: { name: "Fitness" } } },
-      },
-      include: taskInclude,
-      orderBy: [{ dueDate: "desc" }, { createdAt: "desc" }],
-      take: 20,
-    });
-    await sendMessage(chatId, formatTaskList("Fitness Exercises", tasks as any, "No fitness exercises yet."));
-    return;
-  }
-
-  if (command === "/tasks") {
-    const tasks = await prisma.task.findMany({
-      where: { userId: user.id, status: { not: "COMPLETED" } },
-      include: taskInclude,
-      orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
-      take: 20,
-    });
-    await sendMessage(chatId, formatTaskList("All Open Tasks", tasks as any, "No open tasks."));
-    return;
-  }
-
-  await sendMessage(chatId, `Unknown command: ${escapeHtml(command || "(empty)")}\nSend /help for options.`);
 }

@@ -15,6 +15,8 @@ function escapeHtml(value: string) {
 }
 
 async function sendMessage(chatId: string, text: string): Promise<boolean> {
+  console.log("sendMessage called:", chatId, text?.slice(0, 50));
+
   if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.error("Missing TELEGRAM_BOT_TOKEN");
     return false;
@@ -32,8 +34,11 @@ async function sendMessage(chatId: string, text: string): Promise<boolean> {
       }),
     });
 
+    const responseText = await response.text();
+    console.log("Telegram response:", response.status, responseText.slice(0, 200));
+
     if (!response.ok) {
-      console.error("Telegram API error:", await response.text());
+      console.error("Telegram API error:", responseText);
       return false;
     }
 
