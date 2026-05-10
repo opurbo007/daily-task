@@ -7,7 +7,7 @@ export async function GET() {
     return NextResponse.json({ error: "Missing TELEGRAM_BOT_TOKEN" }, { status: 500 });
   }
 
-  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/telegram`;
+  const webhookUrl = `${process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "")}/api/telegram`;
 
   try {
     const response = await fetch(`${TELEGRAM_API}/setWebhook`, {
