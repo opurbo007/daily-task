@@ -108,7 +108,6 @@ export default function TaskCard({ task, onStatusChange, onDelete }: TaskCardPro
             >
               {task.title}
             </Link>
-            <ButtonLink href={`/tasks/${task.id}`} />
 
             {/* Actions */}
             <DropdownMenu>
@@ -220,13 +219,3 @@ export default function TaskCard({ task, onStatusChange, onDelete }: TaskCardPro
   );
 }
 
-function ButtonLink({ href }: { href: string }) {
-  return (
-    <Link
-      href={href}
-      className="hidden rounded-md px-2 py-1 text-[10px] font-medium text-primary transition-colors hover:bg-primary/10 sm:inline-flex"
-    >
-      View
-    </Link>
-  );
-}

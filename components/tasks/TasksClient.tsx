@@ -19,12 +19,9 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import {
-  Plus,
-  Filter,
   Search,
   Grid,
   List,
-  SortAsc,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -52,15 +49,12 @@ export default function TasksClient({
   initialFilters,
 }: TasksClientProps) {
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const [tasks, setTasks] = useState(initialTasks);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState<TaskFilters>({
-    priority: (initialFilters?.priority as any) || "ALL",
-    status: (initialFilters?.status as any) || "ALL",
-    tagId: initialFilters?.tagId,
-  });
+  const [tab, setTab] = useState<"pending" | "completed">("pending");
+  const [tagId, setTagId] = useState<string | undefined>(undefined);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -70,18 +64,22 @@ export default function TasksClient({
   );
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
+    const filtered = tasks.filter((task) => {
       if (search && !task.title.toLowerCase().includes(search.toLowerCase()))
         return false;
-      if (filters.priority && filters.priority !== "ALL" && task.priority !== filters.priority)
-        return false;
-      if (filters.status && filters.status !== "ALL" && task.status !== filters.status)
-        return false;
-      if (filters.tagId && !task.tags.some((t) => t.tagId === filters.tagId))
+      if (tab === "pending" && task.status === "COMPLETED") return false;
+      if (tab === "completed" && task.status !== "COMPLETED") return false;
+      if (tagId && !task.tags.some((t) => t.tagId === tagId))
         return false;
       return true;
     });
-  }, [tasks, search, filters]);
+
+    return filtered.sort((a, b) => {
+      if (a.status === "COMPLETED" && b.status !== "COMPLETED") return 1;
+      if (a.status !== "COMPLETED" && b.status === "COMPLETED") return -1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [tasks, search, tab, tagId]);
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -140,34 +138,61 @@ export default function TasksClient({
   }
 
   async function handleDelete(taskId: string) {
-    if (!window.confirm("Delete this task? This cannot be undone.")) return;
-
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
-    try {
-      await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
-      toast({ title: "Task deleted" });
-    } catch {
-      toast({ title: "Failed to delete task", variant: "destructive" });
-      router.refresh();
-    }
+    const { id: toastId, dismiss } = toast({
+      title: "Delete task?",
+      description: "This cannot be undone.",
+      variant: "destructive",
+      action: (
+        <button
+          className="bg-destructive text-destructive-foreground px-2 py-1 text-xs font-medium rounded hover:bg-destructive/90 transition-colors"
+          onClick={() => {
+            setTasks((prev) => prev.filter((t) => t.id !== taskId));
+            fetch(`/api/tasks/${taskId}`, { method: "DELETE" })
+              .then(() => toast({ title: "Task deleted" }))
+              .catch(() => {
+                toast({ title: "Failed to delete task", variant: "destructive" });
+                router.refresh();
+              });
+            dismiss();
+          }}
+        >
+          Delete
+        </button>
+      ),
+    });
   }
 
   return (
     <div className="space-y-4 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">Tasks</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {filteredTasks.length} of {tasks.length} tasks
-          </p>
-        </div>
-        <Button size="sm" className="gap-1.5" asChild>
-          <Link href="/tasks/create">
-            <Plus className="h-4 w-4" />
-            New Task
-          </Link>
-        </Button>
+        <h1 className="text-xl font-bold">Tasks</h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 p-1 bg-muted/30 rounded-lg w-fit">
+        <button
+          onClick={() => setTab("pending")}
+          className={cn(
+            "px-4 py-1.5 text-xs font-medium rounded-md transition-colors",
+            tab === "pending"
+              ? "bg-background shadow-sm"
+              : "hover:bg-muted"
+          )}
+        >
+          Pending
+        </button>
+        <button
+          onClick={() => setTab("completed")}
+          className={cn(
+            "px-4 py-1.5 text-xs font-medium rounded-md transition-colors",
+            tab === "completed"
+              ? "bg-background shadow-sm"
+              : "hover:bg-muted"
+          )}
+        >
+          Completed
+        </button>
       </div>
 
       {/* Filters */}
@@ -184,50 +209,12 @@ export default function TasksClient({
             />
           </div>
 
-          {/* Priority filter */}
-          <Select
-            value={filters.priority || "ALL"}
-            onValueChange={(v) =>
-              setFilters((f) => ({ ...f, priority: v as any }))
-            }
-          >
-            <SelectTrigger className="h-8 w-32 text-xs">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Priorities</SelectItem>
-              <SelectItem value="CRITICAL">Critical</SelectItem>
-              <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Status filter */}
-          <Select
-            value={filters.status || "ALL"}
-            onValueChange={(v) =>
-              setFilters((f) => ({ ...f, status: v as any }))
-            }
-          >
-            <SelectTrigger className="h-8 w-36 text-xs">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Status</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-
           {/* Tag filter */}
           {tags.length > 0 && (
             <Select
-              value={filters.tagId || "ALL"}
+              value={tagId || "ALL"}
               onValueChange={(v) =>
-                setFilters((f) => ({ ...f, tagId: v === "ALL" ? undefined : v }))
+                setTagId(v === "ALL" ? undefined : v)
               }
             >
               <SelectTrigger className="h-8 w-32 text-xs">
@@ -278,15 +265,10 @@ export default function TasksClient({
           <p className="text-4xl mb-3">📭</p>
           <p className="text-sm font-medium">No tasks found</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {search || filters.priority !== "ALL" || filters.status !== "ALL"
+            {search || tagId
               ? "Try adjusting your filters"
-              : "Create your first task to get started"}
+              : "No tasks yet"}
           </p>
-          <Button size="sm" className="mt-4" asChild>
-            <Link href="/tasks/create">
-              <Plus className="h-4 w-4 mr-1.5" /> Create Task
-            </Link>
-          </Button>
         </div>
       ) : (
         <DndContext
