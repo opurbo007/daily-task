@@ -8,7 +8,7 @@ export async function GET() {
   }
 
   try {
-    // Get bot info to verify token works
+    // Get bot info
     const response = await fetch(`${TELEGRAM_API}/getMe`);
     const result = await response.json();
 
@@ -16,9 +16,14 @@ export async function GET() {
     const webhookResponse = await fetch(`${TELEGRAM_API}/getWebhookInfo`);
     const webhookResult = await webhookResponse.json();
 
+    // Check pending updates
+    const updatesResponse = await fetch(`${TELEGRAM_API}/getUpdates?limit=1`);
+    const updatesResult = await updatesResponse.json();
+
     return NextResponse.json({
       bot: result.ok ? result.result : null,
       webhook: webhookResult.result,
+      lastUpdate: updatesResult.result?.[0] || null,
     });
   } catch (error) {
     return NextResponse.json({ error: "Failed to connect to Telegram" }, { status: 500 });

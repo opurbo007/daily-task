@@ -9,48 +9,57 @@ type TelegramMessage = {
   text?: string;
 };
 
+export async function GET() {
+  return NextResponse.json({ status: "ok", bot: "TaskMaster" });
+}
+
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  console.log("Telegram webhook received:", JSON.stringify(body).slice(0, 200));
+  try {
+    const body = await req.json();
+    console.log("Telegram webhook received:", JSON.stringify(body).slice(0, 200));
 
-  if (body?.message?.chat?.id) {
-    await handleCommand(body.message);
-    return NextResponse.json({ ok: true });
-  }
+    if (body?.message?.chat?.id) {
+      await handleCommand(body.message);
+      return NextResponse.json({ ok: true });
+    }
 
-  if (body?.callback_query) {
-    console.log("Callback query:", body.callback_query);
-  }
+    if (body?.callback_query) {
+      console.log("Callback query:", body.callback_query);
+    }
 
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-  const chatId = body.chatId;
-  if (!chatId) {
-    return NextResponse.json({ error: "Telegram chat ID required" }, { status: 400 });
-  }
+    const chatId = body.chatId;
+    if (!chatId) {
+      return NextResponse.json({ error: "Telegram chat ID required" }, { status: 400 });
+    }
 
-  const sent = await sendMessage(
-    chatId,
-    `<b>TaskMaster Connected!</b>\n\nCommands:\n/tasks - show all tasks\n/today - show today's tasks\n/priority - show priority tasks\n/fitness - show fitness exercises\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || ""}">Open TaskMaster</a>`
-  );
-  await setBotCommands();
-
-  if (!sent) {
-    return NextResponse.json(
-      { error: "Failed to send test message. Check your bot token and chat ID." },
-      { status: 400 }
+    const sent = await sendMessage(
+      chatId,
+      `<b>TaskMaster Connected!</b>\n\nCommands:\n/tasks - show all tasks\n/today - show today's tasks\n/priority - show priority tasks\n/fitness - show fitness exercises\n\n<a href="${process.env.NEXT_PUBLIC_APP_URL || ""}">Open TaskMaster</a>`
     );
+    await setBotCommands();
+
+    if (!sent) {
+      return NextResponse.json(
+        { error: "Failed to send test message. Check your bot token and chat ID." },
+        { status: 400 }
+      );
+    }
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { telegramChatId: String(chatId) },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Telegram webhook error:", error);
+    return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
-
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { telegramChatId: String(chatId) },
-  });
-
-  return NextResponse.json({ success: true });
 }
 
 async function handleCommand(message: TelegramMessage) {
@@ -72,46 +81,57 @@ async function handleCommand(message: TelegramMessage) {
     return;
   }
 
-  // Handle commands
-  try {
-    if (command === "/start" || command === "/help") {
-      const sent = await sendMessage(chatId, "<b>TaskMaster commands</b>\n\n/tasks - show all tasks\n/today - show today's tasks\n/priority - show critical/high priority tasks\n/fitness - show fitness exercises");
-      console.log("Send help result:", sent);
-      return;
-    }
-
-    if (command === "/tasks") {
-      const tasks = await prisma.task.findMany({
-        where: { userId: user.id, status: { not: "COMPLETED" } },
-        include: { tags: { include: { tag: true } } },
-        orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
-        take: 20,
-      });
-      const sent = await sendMessage(chatId, formatTaskList("All Open Tasks", tasks as any, "No open tasks."));
-      console.log("Send tasks result:", sent);
-      return;
-    }
-
-    if (command === "/today") {
-      const now = new Date();
-      const tasks = await prisma.task.findMany({
-        where: {
-          userId: user.id,
-          dueDate: { gte: startOfDay(now), lte: endOfDay(now) },
-          status: { not: "COMPLETED" },
-        },
-        include: { tags: { include: { tag: true } } },
-        orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
-        take: 20,
-      });
-      const sent = await sendMessage(chatId, formatTaskList("Today's Tasks", tasks as any, "No tasks due today."));
-      console.log("Send today result:", sent);
-      return;
-    }
-
-    const sent = await sendMessage(chatId, `Unknown command: ${command}\nSend /help for options.`);
-    console.log("Send unknown command result:", sent);
-  } catch (err) {
-    console.error("Error handling command:", err);
+  if (command === "/start" || command === "/help") {
+    const sent = await sendMessage(chatId, "<b>TaskMaster commands</b>\n\n/tasks - show all tasks\n/today - show today's tasks\n/priority - show critical/high priority tasks\n/fitness - show fitness exercises");
+    console.log("Send help result:", sent);
+    return;
   }
+
+  if (command === "/tasks") {
+    const tasks = await prisma.task.findMany({
+      where: { userId: user.id, status: { not: "COMPLETED" } },
+      include: { tags: { include: { tag: true } } },
+      orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
+      take: 20,
+    });
+    const sent = await sendMessage(chatId, formatTaskList("All Open Tasks", tasks as any, "No open tasks."));
+    console.log("Send tasks result:", sent);
+    return;
+  }
+
+  if (command === "/today") {
+    const now = new Date();
+    const tasks = await prisma.task.findMany({
+      where: {
+        userId: user.id,
+        dueDate: { gte: startOfDay(now), lte: endOfDay(now) },
+        status: { not: "COMPLETED" },
+      },
+      include: { tags: { include: { tag: true } } },
+      orderBy: [{ priority: "desc" }, { sortOrder: "asc" }],
+      take: 20,
+    });
+    const sent = await sendMessage(chatId, formatTaskList("Today's Tasks", tasks as any, "No tasks due today."));
+    console.log("Send today result:", sent);
+    return;
+  }
+
+  if (command === "/priority") {
+    const tasks = await prisma.task.findMany({
+      where: {
+        userId: user.id,
+        priority: { in: ["CRITICAL", "HIGH"] },
+        status: { in: ["PENDING", "IN_PROGRESS"] },
+      },
+      include: { tags: { include: { tag: true } } },
+      orderBy: [{ priority: "desc" }, { dueDate: "asc" }],
+      take: 20,
+    });
+    const sent = await sendMessage(chatId, formatTaskList("Priority Tasks", tasks as any, "No critical or high priority tasks."));
+    console.log("Send priority result:", sent);
+    return;
+  }
+
+  const sent = await sendMessage(chatId, `Unknown command: ${command}\nSend /help for options.`);
+  console.log("Send unknown command result:", sent);
 }
